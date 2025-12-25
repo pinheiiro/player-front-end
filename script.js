@@ -65,6 +65,13 @@ const volumeSlider = document.querySelector('.volume-slider');
 const volumeFilled = document.querySelector('.volume-filled');
 const backBtn = document.getElementById('backBtn');
 const playAllBtn = document.getElementById('playAllBtn');
+const homeButton = document.getElementById('homeButton');
+
+// Top navigation (início / voltar) container
+const topNav = document.querySelector('.navigation-buttons');
+
+// Esconder navegação superior inicialmente (apenas mostrar quando abrir um álbum)
+if (topNav) topNav.style.display = 'none';
 
 // Variáveis de controle do player
 
@@ -86,7 +93,19 @@ function renderAlbums() {
         const artistName = album.artista ? album.artista.nome : (album.artistName || 'Artista');
         // A foto já vem com a URL construída em fetchAlbums
         const artistPhoto = album.artista && album.artista.foto ? album.artista.foto : null;
-        const coverUrl = album.cover;
+        let coverUrl = album.cover;
+        if (coverUrl) {
+            // Se a URL não for absoluta, tornar absoluta apontando para o backend
+            if (!coverUrl.startsWith('http')) {
+                if (coverUrl.startsWith('/')) {
+                    coverUrl = `http://localhost:8082${coverUrl}`;
+                } else {
+                    coverUrl = `http://localhost:8082/${coverUrl}`;
+                }
+            }
+        } else {
+            coverUrl = 'placeholder-album.jpg';
+        }
         const albumCard = document.createElement('div');
         albumCard.className = 'album-card';
         albumCard.dataset.albumId = album.id;
@@ -111,7 +130,7 @@ function renderAlbums() {
             const albumId = parseInt(card.dataset.albumId);
             // Buscar músicas do álbum via API
             try {
-                const resp = await fetch(`http://localhost:8080/musicas/album/${albumId}`);
+                const resp = await fetch(`http://localhost:8082/musicas/album/${albumId}`);
                 if (!resp.ok) throw new Error('Erro ao buscar músicas do álbum');
                 const musicas = await resp.json();
                 currentAlbum = musicData.albums.find(album => album.id === albumId);
@@ -119,7 +138,7 @@ function renderAlbums() {
                     currentAlbum.songs = musicas.map(m => ({
                         id: m.id,
                         title: m.nome,
-                        url: `http://localhost:8080${m.url}`
+                        url: `http://localhost:8082${m.url}`
                     }));
                     openAlbumView(currentAlbum);
                 }
@@ -161,7 +180,7 @@ function loadAndPlayTrack() {
     showPlayerBar();
 
         // Configurar áudio para streaming
-        audio.src = currentTrack.url.startsWith('http') ? currentTrack.url : `http://localhost:8080${currentTrack.url}`;
+        audio.src = currentTrack.url.startsWith('http') ? currentTrack.url : `http://localhost:8082${currentTrack.url}`;
         audio.play()
             .then(() => {
                 isPlaying = true;
@@ -220,12 +239,46 @@ function openAlbumView(album) {
                 <div class="track-index">${index + 1}</div>
                 <div class="track-play-icon"><i class="fas fa-play"></i></div>
                 <div class="track-title">${song.title}</div>
-                <div class="track-duration">${song.duration || '0:00'}</div>
+                <div class="track-options">
+                    <button class="track-options-btn" aria-label="Opções"><i class="fas fa-ellipsis-v"></i></button>
+                    <div class="track-options-menu hidden">
+                        <button class="track-option delete-track danger">Remover música</button>
+                    </div>
+                </div>
             `;
-            trackRow.addEventListener('click', () => {
+
+            // Reproduzir ao clicar na linha (exceto quando clicar no menu)
+            trackRow.addEventListener('click', (ev) => {
+                if (ev.target.closest('.track-options')) return;
                 currentTrack = song;
                 loadAndPlayTrack();
             });
+
+            // Configurar botão de opções da faixa
+            setTimeout(() => {
+                const btn = trackRow.querySelector('.track-options-btn');
+                const menu = trackRow.querySelector('.track-options-menu');
+                const deleteBtn = trackRow.querySelector('.delete-track');
+
+                if (btn && menu) {
+                    btn.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        // fechar outros menus
+                        document.querySelectorAll('.track-options-menu').forEach(m => { if (m !== menu) m.classList.add('hidden'); });
+                        menu.classList.toggle('hidden');
+                    });
+                }
+
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        trackToDelete = { songId: song.id, albumId: album.id };
+                        openModal('deleteTrack');
+                        if (menu) menu.classList.add('hidden');
+                    });
+                }
+            }, 0);
+
             tracksContainer.appendChild(trackRow);
         });
     }
@@ -233,6 +286,15 @@ function openAlbumView(album) {
     // Mostrar vista de álbum, ocultar grid
     albumsGrid.classList.add('hidden');
     albumView.classList.remove('hidden');
+    // Mostrar apenas a seta de voltar no topo quando dentro do álbum
+    if (topNav) {
+        topNav.style.display = 'flex';
+        // mostrar somente o backBtn dentro do container
+        topNav.querySelectorAll('.nav-btn').forEach(btn => {
+            if (btn.id === 'backBtn') btn.style.display = 'inline-flex';
+            else btn.style.display = 'none';
+        });
+    }
 }
 
 // Função para fechar a vista do álbum e voltar à grid
@@ -245,6 +307,8 @@ function closeAlbumView() {
     albumView.classList.add('hidden');
     albumsGrid.classList.remove('hidden');
     currentAlbum = null;
+    // Ao voltar para listagem, esconder a navegação superior
+    if (topNav) topNav.style.display = 'none';
 }
 
 // Atualizar botão de play/pause
@@ -272,6 +336,16 @@ if (backBtn) {
     backBtn.addEventListener('click', closeAlbumView);
 }
 
+// Clique no botão Início: voltar para listagem principal
+if (homeButton) {
+    homeButton.addEventListener('click', () => {
+        // fechar vista se aberta e garantir grid visível
+        closeAlbumView();
+        // esconder navegação superior na listagem
+        if (topNav) topNav.style.display = 'none';
+    });
+}
+
 if (playAllBtn) {
     playAllBtn.addEventListener('click', () => {
         if (currentAlbum && currentAlbum.songs && currentAlbum.songs.length > 0) {
@@ -279,6 +353,34 @@ if (playAllBtn) {
             loadAndPlayTrack();
         }
     });
+}
+
+// Botão de upload dentro da vista do álbum
+const uploadInAlbumBtn = document.getElementById('uploadInAlbumBtn');
+if (uploadInAlbumBtn) {
+    uploadInAlbumBtn.addEventListener('click', () => {
+        if (!currentAlbum) return alert('Abra um álbum primeiro.');
+        // Pré-selecionar o álbum atual no formulário
+        const selectAlbum = document.getElementById('selectAlbum');
+        if (selectAlbum) {
+            selectAlbum.value = currentAlbum.id;
+            selectAlbum.disabled = true;
+        }
+        // Abrir modal de upload
+        openModal('upload');
+    });
+}
+
+// Flag para controlar se estamos no upload via álbum
+let uploadFromAlbumPage = false;
+
+// Função para habilitar/desabilitar seleção de álbum (reabre modal a partir do botão principal)
+function enableAlbumSelection() {
+    const selectAlbum = document.getElementById('selectAlbum');
+    if (selectAlbum) {
+        selectAlbum.disabled = false;
+    }
+    uploadFromAlbumPage = false;
 }
 
 // Controle de progresso
@@ -306,6 +408,34 @@ volumeSlider.addEventListener('click', (e) => {
     audio.volume = volume;
     volumeFilled.style.width = `${volume * 100}%`;
 });
+
+// Alternar mudo ao clicar no ícone de volume
+const volumeIcon = document.querySelector('.volume-control i');
+let previousVolume = audio.volume || 1;
+if (volumeIcon) {
+    volumeIcon.style.cursor = 'pointer';
+    volumeIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!audio.muted) {
+            // guardar volume atual e mutar
+            previousVolume = audio.volume;
+            audio.muted = true;
+            // trocar ícone para mudo
+            volumeIcon.classList.remove('fa-volume-up');
+            volumeIcon.classList.add('fa-volume-xmark');
+            // esvaziar visualmente o slider
+            if (volumeFilled) volumeFilled.style.width = '0%';
+        } else {
+            // desmutar e restaurar volume
+            audio.muted = false;
+            audio.volume = (previousVolume !== undefined && previousVolume !== null) ? previousVolume : 1;
+            // trocar ícone para volume
+            volumeIcon.classList.remove('fa-volume-xmark');
+            volumeIcon.classList.add('fa-volume-up');
+            if (volumeFilled) volumeFilled.style.width = `${audio.volume * 100}%`;
+        }
+    });
+}
 
 // Formatar tempo em minutos:segundos
 function formatTime(time) {
@@ -338,12 +468,35 @@ function playPreviousTrack() {
 nextButton.addEventListener('click', playNextTrack);
 previousButton.addEventListener('click', playPreviousTrack);
 
+// Quando a música terminar, avançar automaticamente para a próxima
+audio.addEventListener('ended', () => {
+    if (!currentAlbum || !currentTrack) {
+        isPlaying = false;
+        updatePlayButton();
+        return;
+    }
+    const currentIndex = currentAlbum.songs.findIndex(song => song.id === currentTrack.id);
+    if (currentIndex < currentAlbum.songs.length - 1) {
+        playNextTrack();
+    } else {
+        // fim da lista
+        isPlaying = false;
+        updatePlayButton();
+    }
+});
+
 // Gerenciamento de Modais
 const modals = {
     artist: document.getElementById('artistModal'),
     album: document.getElementById('albumModal'),
     upload: document.getElementById('uploadModal')
 };
+
+// Novos modais (editar nome, editar capa, confirmar exclusão)
+modals.editName = document.getElementById('editNameModal');
+modals.editCover = document.getElementById('editCoverModal');
+modals.deleteConfirm = document.getElementById('deleteConfirmModal');
+modals.deleteTrack = document.getElementById('deleteTrackModal');
 
 const buttons = {
     artist: document.getElementById('addArtistButton'),
@@ -356,6 +509,28 @@ const forms = {
     album: document.getElementById('albumForm'),
     upload: document.getElementById('uploadForm')
 };
+
+// Formulários/modais relacionados a edição/exclusão de álbum
+const editNameForm = document.getElementById('editNameForm');
+const editCoverForm = document.getElementById('editCoverForm');
+const editNameInput = document.getElementById('editNameInput');
+const editCoverFile = document.getElementById('editCoverFile');
+
+// Menu de opções do álbum (três pontos)
+const albumOptionsBtn = document.getElementById('albumOptionsBtn');
+const albumOptionsMenu = document.getElementById('albumOptionsMenu');
+const changeAlbumNameBtn = document.getElementById('changeAlbumNameBtn');
+const changeAlbumCoverBtn = document.getElementById('changeAlbumCoverBtn');
+const deleteAlbumBtn = document.getElementById('deleteAlbumBtn');
+
+// Botões de confirmação/cancelamento no modal de exclusão
+const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+const confirmDeleteTrackBtn = document.getElementById('confirmDeleteTrackBtn');
+const cancelDeleteTrackBtn = document.getElementById('cancelDeleteTrackBtn');
+
+// Estado temporário para exclusão de faixa
+let trackToDelete = null;
 
 // Função para abrir modal
 function openModal(modalId) {
@@ -371,7 +546,13 @@ function closeModal(modalId) {
 
 // Configurar eventos dos botões
 Object.keys(buttons).forEach(key => {
-    buttons[key].addEventListener('click', () => openModal(key));
+    buttons[key].addEventListener('click', () => {
+        // Ao clicar no botão de upload da sessão principal, habilitar seleção de álbum
+        if (key === 'upload') {
+            enableAlbumSelection();
+        }
+        openModal(key);
+    });
 });
 
 // Configurar eventos de fechar
@@ -388,6 +569,183 @@ window.addEventListener('click', (event) => {
         }
     });
 });
+
+// --- Menu de opções do álbum (três pontos) ---
+if (albumOptionsBtn && albumOptionsMenu) {
+    albumOptionsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        albumOptionsMenu.classList.toggle('hidden');
+    });
+
+    // Fechar menu ao clicar fora
+    document.addEventListener('click', (e) => {
+        if (!albumOptionsMenu.contains(e.target) && e.target !== albumOptionsBtn) {
+            albumOptionsMenu.classList.add('hidden');
+        }
+        // Fechar menus de opções das faixas
+        document.querySelectorAll('.track-options-menu').forEach(menu => {
+            const btn = menu.parentElement ? menu.parentElement.querySelector('.track-options-btn') : null;
+            if (menu && !menu.contains(e.target) && e.target !== btn) {
+                menu.classList.add('hidden');
+            }
+        });
+    });
+}
+
+// Ações do menu
+if (changeAlbumNameBtn) {
+    changeAlbumNameBtn.addEventListener('click', () => {
+        albumOptionsMenu.classList.add('hidden');
+        if (!currentAlbum) return alert('Abra um álbum primeiro.');
+        editNameInput.value = currentAlbum.nome || currentAlbum.title || '';
+        openModal('editName');
+    });
+}
+
+if (changeAlbumCoverBtn) {
+    changeAlbumCoverBtn.addEventListener('click', () => {
+        albumOptionsMenu.classList.add('hidden');
+        if (!currentAlbum) return alert('Abra um álbum primeiro.');
+        // reset input label
+        const lbl = document.querySelector('#editCoverFile').parentElement.querySelector('.file-input-label');
+        if (lbl) lbl.textContent = 'Escolher arquivo';
+        openModal('editCover');
+    });
+}
+
+if (deleteAlbumBtn) {
+    deleteAlbumBtn.addEventListener('click', () => {
+        albumOptionsMenu.classList.add('hidden');
+        if (!currentAlbum) return alert('Abra um álbum primeiro.');
+        openModal('deleteConfirm');
+    });
+}
+
+// Editar nome do álbum (rota /albuns/{id}/nome)
+if (editNameForm) {
+    editNameForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentAlbum) return alert('Nenhum álbum selecionado.');
+        const newName = editNameInput.value.trim();
+        if (!newName) return alert('Nome inválido.');
+        try {
+            const resp = await fetch(`http://localhost:8082/albuns/${currentAlbum.id}/nome`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome: newName })
+            });
+            if (!resp.ok) throw new Error('Erro ao atualizar nome do álbum');
+
+            // Atualizar localmente
+            const albumLocal = musicData.albums.find(a => a.id === currentAlbum.id);
+            if (albumLocal) {
+                albumLocal.nome = newName;
+                albumLocal.title = newName;
+            }
+            if (currentAlbum) {
+                currentAlbum.nome = newName;
+                currentAlbum.title = newName;
+            }
+            document.getElementById('albumViewTitle').textContent = newName;
+            renderAlbums();
+            updateAlbumSelects();
+            closeModal('editName');
+            alert('Nome do álbum atualizado com sucesso.');
+        } catch (err) {
+            alert('Erro ao atualizar nome: ' + err.message);
+        }
+    });
+}
+
+// Alterar capa do álbum (rota /albuns/{id}/capa)
+if (editCoverForm) {
+    editCoverForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentAlbum) return alert('Nenhum álbum selecionado.');
+        const file = editCoverFile.files[0];
+        if (!file) return alert('Selecione um arquivo de imagem.');
+        try {
+            const formData = new FormData();
+            formData.append('capa', file);
+            const resp = await fetch(`http://localhost:8082/albuns/${currentAlbum.id}/capa`, {
+                method: 'PUT',
+                body: formData
+            });
+            if (!resp.ok) throw new Error('Erro ao enviar nova capa');
+
+            // Atualizar URL localmente (assume rota está servindo em /albuns/{id}/capa)
+            const newCoverUrl = `http://localhost:8082/albuns/${currentAlbum.id}/capa`;
+            const albumLocal = musicData.albums.find(a => a.id === currentAlbum.id);
+            if (albumLocal) albumLocal.cover = newCoverUrl;
+            if (currentAlbum) currentAlbum.cover = newCoverUrl;
+            document.getElementById('albumViewCover').src = newCoverUrl;
+            renderAlbums();
+            updateAlbumSelects();
+            closeModal('editCover');
+            alert('Capa atualizada com sucesso.');
+        } catch (err) {
+            alert('Erro ao atualizar capa: ' + err.message);
+        }
+    });
+}
+
+// Excluir álbum
+if (confirmDeleteBtn) {
+    confirmDeleteBtn.addEventListener('click', async () => {
+        if (!currentAlbum) return alert('Nenhum álbum selecionado.');
+        try {
+            const resp = await fetch(`http://localhost:8082/albuns/${currentAlbum.id}`, { method: 'DELETE' });
+            if (!resp.ok) throw new Error('Erro ao excluir álbum');
+
+            // Remover localmente e atualizar UI
+            musicData.albums = musicData.albums.filter(a => a.id !== currentAlbum.id);
+            closeModal('deleteConfirm');
+            closeAlbumView();
+            renderAlbums();
+            updateAlbumSelects();
+            alert('Álbum excluído com sucesso.');
+        } catch (err) {
+            alert('Erro ao excluir álbum: ' + err.message);
+        }
+    });
+}
+
+if (cancelDeleteBtn) {
+    cancelDeleteBtn.addEventListener('click', () => closeModal('deleteConfirm'));
+}
+
+// Excluir música (confirmar)
+if (confirmDeleteTrackBtn) {
+    confirmDeleteTrackBtn.addEventListener('click', async () => {
+        if (!trackToDelete || !trackToDelete.songId) return alert('Nenhuma música selecionada para exclusão.');
+        try {
+            const resp = await fetch(`http://localhost:8082/musicas/${trackToDelete.songId}`, { method: 'DELETE' });
+            if (!resp.ok) throw new Error('Erro ao excluir música');
+
+            // Remover localmente
+            const albumLocal = musicData.albums.find(a => a.id === trackToDelete.albumId);
+            if (albumLocal && Array.isArray(albumLocal.songs)) {
+                albumLocal.songs = albumLocal.songs.filter(s => s.id !== trackToDelete.songId);
+            }
+            if (currentAlbum && currentAlbum.id === trackToDelete.albumId) {
+                currentAlbum.songs = currentAlbum.songs.filter(s => s.id !== trackToDelete.songId);
+                openAlbumView(currentAlbum);
+            }
+            closeModal('deleteTrack');
+            trackToDelete = null;
+            alert('Música excluída com sucesso.');
+        } catch (err) {
+            alert('Erro ao excluir música: ' + err.message);
+        }
+    });
+}
+
+if (cancelDeleteTrackBtn) {
+    cancelDeleteTrackBtn.addEventListener('click', () => {
+        trackToDelete = null;
+        closeModal('deleteTrack');
+    });
+}
 
 // Atualizar labels dos inputs de arquivo
 document.querySelectorAll('input[type="file"]').forEach(input => {
@@ -406,7 +764,7 @@ forms.artist.addEventListener('submit', async (e) => {
 
     try {
         // 1. Cadastrar artista (POST JSON)
-        const response = await fetch('http://localhost:8080/artistas', {
+        const response = await fetch('http://localhost:8082/artistas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nome })
@@ -418,7 +776,7 @@ forms.artist.addEventListener('submit', async (e) => {
         if (imageFile) {
             const formData = new FormData();
             formData.append('arquivo', imageFile);
-            await fetch(`http://localhost:8080/artistas/${artista.id}/foto`, {
+            await fetch(`http://localhost:8082/artistas/${artista.id}/foto`, {
                 method: 'POST',
                 body: formData
             });
@@ -450,7 +808,7 @@ forms.album.addEventListener('submit', async (e) => {
 
     try {
         // 1. Cadastrar álbum (POST JSON)
-        const response = await fetch('http://localhost:8080/albuns', {
+        const response = await fetch('http://localhost:8082/albuns', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -466,13 +824,13 @@ forms.album.addEventListener('submit', async (e) => {
         let urlCapa = null;
         if (coverFile) {
             const formData = new FormData();
-            formData.append('arquivo', coverFile);
-            const capaResp = await fetch(`http://localhost:8080/albuns/${album.id}/capa`, {
-                method: 'POST',
+            formData.append('capa', coverFile);
+            const capaResp = await fetch(`http://localhost:8082/albuns/${album.id}/capa`, {
+                method: 'PUT',
                 body: formData
             });
             if (capaResp.ok) {
-                urlCapa = `/albuns/${album.id}/capa`;
+                urlCapa = `http://localhost:8082/albuns/${album.id}/capa`;
             }
         }
 
@@ -504,13 +862,14 @@ forms.upload.addEventListener('submit', async (e) => {
     const musicFile = document.getElementById('musicFile').files[0];
     // Buscar artistaId do álbum
     const album = musicData.albums.find(a => a.id === parseInt(albumId));
-    const artistaId = album ? album.artistId : null;
+    // Determina artistaId suportando diferentes formatos retornados pela API
+    const artistaId = album ? (album.artistId || (album.artista && (album.artista.id || album.artistaId)) || null) : null;
 
     // Duração será calculada no backend
     const dados = {
         nome,
         albumId: parseInt(albumId),
-        artistaId: parseInt(artistaId),
+        artistaId: (artistaId !== null && artistaId !== undefined) ? parseInt(artistaId) : null,
         duracaoSegundos: 0,
         duracaoFormatada: "0:00"
     };
@@ -522,7 +881,7 @@ forms.upload.addEventListener('submit', async (e) => {
         formData.append('arquivo', musicFile);
 
         // POST para /musicas
-        const response = await fetch('http://localhost:8080/musicas', {
+        const response = await fetch('http://localhost:8082/musicas', {
             method: 'POST',
             body: formData
         });
@@ -541,6 +900,10 @@ forms.upload.addEventListener('submit', async (e) => {
         forms.upload.reset();
         closeModal('upload');
         alert('Música adicionada com sucesso!');
+        // Se estamos na vista de um álbum, re-renderizar a lista de faixas
+        if (currentAlbum && currentAlbum.id === parseInt(albumId)) {
+            openAlbumView(currentAlbum);
+        }
         renderAlbums();
     } catch (err) {
         alert('Erro ao cadastrar música: ' + err.message);
@@ -555,41 +918,69 @@ function updateArtistSelects() {
     ).join('');
 }
 
+// Buscar artistas do backend e popular `musicData.artists`
+async function fetchArtists() {
+    try {
+        const resp = await fetch('http://localhost:8082/artistas');
+        if (!resp.ok) throw new Error('Erro ao buscar artistas');
+        const data = await resp.json();
+        if (Array.isArray(data)) {
+            musicData.artists = data.map(a => ({
+                id: a.id,
+                name: a.nome || a.name || 'Artista',
+                image: `http://localhost:8082/artistas/${a.id}/foto`
+            }));
+            updateArtistSelects();
+        }
+    } catch (err) {
+        console.warn('Não foi possível carregar artistas:', err.message);
+    }
+}
+
 // Função para atualizar selects de álbuns
 function updateAlbumSelects() {
     const albumSelect = document.getElementById('selectAlbum');
     albumSelect.innerHTML = musicData.albums.map(album => {
-        const artist = musicData.artists.find(a => a.id === album.artistId);
-        return `<option value="${album.id}">${album.title} - ${artist ? artist.name : 'Artista Desconhecido'}</option>`;
+        const albumName = album.title || album.nome || 'Álbum';
+        const artistId = album.artistId || (album.artista && album.artista.id) || null;
+        const artist = musicData.artists.find(a => a.id === artistId);
+        const artistName = artist ? artist.name : (album.artista ? (album.artista.nome || album.artista.name) : 'Artista Desconhecido');
+        return `<option value="${album.id}">${albumName} - ${artistName}</option>`;
     }).join('');
 }
 
-// Inicializar selects
-updateArtistSelects();
-updateAlbumSelects();
-
-// Inicializar a aplicação
+// Inicializar selects: buscar artistas antes de carregar álbuns
+fetchArtists().then(() => {
+    updateAlbumSelects();
+    // Inicializar a aplicação (buscar álbuns)
+    fetchAlbums();
+}).catch(() => {
+    // Mesmo que falhe, tentar buscar álbuns
+    fetchAlbums();
+});
 
 // Função para buscar álbuns da API (com paginação)
 async function fetchAlbums(page = 0, size = 20) {
     if (isLoadingAlbums || !hasMoreAlbums) return;
     isLoadingAlbums = true;
     try {
-        const resp = await fetch(`http://localhost:8080/albuns?pagina=${page}&tamanho=${size}`);
+        const resp = await fetch(`http://localhost:8082/albuns?pagina=${page}&tamanho=${size}`);
         if (!resp.ok) throw new Error('Erro ao buscar álbuns');
         const data = await resp.json();
         if (Array.isArray(data.content)) {
             // Ajusta as URLs das imagens antes de adicionar ao musicData
             const albumsWithUrls = data.content.map(album => ({
                 ...album,
-                cover: `http://localhost:8080/albuns/${album.id}/capa`,
+                cover: `http://localhost:8082/albuns/${album.id}/capa`,
                 artista: {
                     ...album.artista,
-                    foto: `http://localhost:8080/artistas/${album.artista.id}/foto`
+                    foto: `http://localhost:8082/artistas/${album.artista.id}/foto`
                 }
             }));
             musicData.albums = musicData.albums.concat(albumsWithUrls);
             renderAlbums();
+            // Atualizar select de álbumes após carregar novos álbuns
+            updateAlbumSelects();
             hasMoreAlbums = data.content.length === size;
             currentPage = data.pageable.pageNumber + 1;
         } else {

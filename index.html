@@ -11,10 +11,10 @@
     <div class="container">
         <nav class="sidebar">
             <div class="logo">
-                <h1>Music Player</h1>
+                <h1>Pinheiro Music</h1>
             </div>
             <ul class="nav-menu">
-                <li><i class="fas fa-home"></i> Início</li>
+                <li id="homeButton"><i class="fas fa-home"></i> Início</li>
                 <li id="addArtistButton"><i class="fas fa-user-plus"></i> Adicionar Artista</li>
                 <li id="addAlbumButton"><i class="fas fa-compact-disc"></i> Adicionar Álbum</li>
                 <li id="uploadButton"><i class="fas fa-music"></i> Upload Música</li>
@@ -52,6 +52,15 @@
 
                 <div class="album-view-controls">
                     <button class="play-all-btn" id="playAllBtn"><i class="fas fa-play"></i> Reproduzir Tudo</button>
+                    <button class="play-all-btn" id="uploadInAlbumBtn" style="background-color: #6c757d;"><i class="fas fa-plus"></i> Adicionar Música</button>
+                    <div class="album-options">
+                        <button id="albumOptionsBtn" class="album-options-btn" aria-label="Mais opções"> <i class="fas fa-ellipsis-v"></i> </button>
+                        <div id="albumOptionsMenu" class="album-options-menu hidden">
+                            <button id="changeAlbumNameBtn" class="album-option">Alterar nome do álbum</button>
+                            <button id="changeAlbumCoverBtn" class="album-option">Alterar capa do álbum</button>
+                            <button id="deleteAlbumBtn" class="album-option danger">Excluir álbum</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="album-view-tracks" id="albumViewTracks">
@@ -90,6 +99,80 @@
                 <i class="fas fa-volume-up"></i>
                 <div class="volume-slider">
                     <div class="volume-filled"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Alterar nome do álbum -->
+    <div id="editNameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Alterar nome do álbum</h2>
+                <span class="close" data-modal="editNameModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editNameForm">
+                    <div class="form-group">
+                        <label for="editNameInput">Novo nome:</label>
+                        <input type="text" id="editNameInput" required>
+                    </div>
+                    <button type="submit" class="submit-btn">Salvar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Alterar capa do álbum -->
+    <div id="editCoverModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Alterar capa do álbum</h2>
+                <span class="close" data-modal="editCoverModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editCoverForm">
+                    <div class="form-group">
+                        <label for="editCoverFile">Escolher nova capa:</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="editCoverFile" accept="image/*" required>
+                            <span class="file-input-label">Escolher arquivo</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn">Enviar capa</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmar exclusão -->
+    <div id="deleteConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Excluir álbum</h2>
+                <span class="close" data-modal="deleteConfirmModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este álbum? Essa ação é irreversível.</p>
+                <div style="display:flex; gap:12px; margin-top:16px;">
+                    <button id="confirmDeleteBtn" class="submit-btn" style="background-color:#d9534f;">Excluir</button>
+                    <button id="cancelDeleteBtn" class="submit-btn" style="background-color:#6c757d;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal: Confirmar exclusão de música -->
+    <div id="deleteTrackModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Excluir música</h2>
+                <span class="close" data-modal="deleteTrackModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir esta música? Essa ação é irreversível.</p>
+                <div style="display:flex; gap:12px; margin-top:16px;">
+                    <button id="confirmDeleteTrackBtn" class="submit-btn" style="background-color:#d9534f;">Excluir</button>
+                    <button id="cancelDeleteTrackBtn" class="submit-btn" style="background-color:#6c757d;">Cancelar</button>
                 </div>
             </div>
         </div>
