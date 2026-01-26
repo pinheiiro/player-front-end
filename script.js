@@ -52,6 +52,8 @@ const musicData = {
     ]
 };
 
+const API_BASE = 'https://player-api.gpinheiro.cloud'; // dev: 'http://localhost:8082' -- prod: 'https://player-api.gpinheiro.cloud'
+
 // Elementos do DOM
 const albumsGrid = document.getElementById('albumsGrid');
 const playButton = document.querySelector('.play-btn');
@@ -98,9 +100,9 @@ function renderAlbums() {
             // Se a URL não for absoluta, tornar absoluta apontando para o backend
             if (!coverUrl.startsWith('http')) {
                 if (coverUrl.startsWith('/')) {
-                    coverUrl = `http://localhost:8082${coverUrl}`;
+                    coverUrl = `${API_BASE}${coverUrl}`;
                 } else {
-                    coverUrl = `http://localhost:8082/${coverUrl}`;
+                    coverUrl = `${API_BASE}/${coverUrl}`;
                 }
             }
         } else {
@@ -130,7 +132,7 @@ function renderAlbums() {
             const albumId = parseInt(card.dataset.albumId);
             // Buscar músicas do álbum via API
             try {
-                const resp = await fetch(`http://localhost:8082/musicas/album/${albumId}`);
+                const resp = await fetch(`${API_BASE}/musicas/album/${albumId}`);
                 if (!resp.ok) throw new Error('Erro ao buscar músicas do álbum');
                 const musicas = await resp.json();
                 currentAlbum = musicData.albums.find(album => album.id === albumId);
@@ -138,7 +140,7 @@ function renderAlbums() {
                     currentAlbum.songs = musicas.map(m => ({
                         id: m.id,
                         title: m.nome,
-                        url: `http://localhost:8082${m.url}`
+                        url: `${API_BASE}${m.url}`
                     }));
                     openAlbumView(currentAlbum);
                 }
@@ -180,7 +182,7 @@ function loadAndPlayTrack() {
     showPlayerBar();
 
         // Configurar áudio para streaming
-        audio.src = currentTrack.url.startsWith('http') ? currentTrack.url : `http://localhost:8082${currentTrack.url}`;
+        audio.src = currentTrack.url.startsWith('http') ? currentTrack.url : `${API_BASE}${currentTrack.url}`;
         audio.play()
             .then(() => {
                 isPlaying = true;
@@ -500,8 +502,7 @@ modals.deleteTrack = document.getElementById('deleteTrackModal');
 
 const buttons = {
     artist: document.getElementById('addArtistButton'),
-    album: document.getElementById('addAlbumButton'),
-    upload: document.getElementById('uploadButton')
+    album: document.getElementById('addAlbumButton')
 };
 
 const forms = {
@@ -547,10 +548,6 @@ function closeModal(modalId) {
 // Configurar eventos dos botões
 Object.keys(buttons).forEach(key => {
     buttons[key].addEventListener('click', () => {
-        // Ao clicar no botão de upload da sessão principal, habilitar seleção de álbum
-        if (key === 'upload') {
-            enableAlbumSelection();
-        }
         openModal(key);
     });
 });
@@ -629,7 +626,7 @@ if (editNameForm) {
         const newName = editNameInput.value.trim();
         if (!newName) return alert('Nome inválido.');
         try {
-            const resp = await fetch(`http://localhost:8082/albuns/${currentAlbum.id}/nome`, {
+            const resp = await fetch(`${API_BASE}/albuns/${currentAlbum.id}/nome`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nome: newName })
@@ -667,14 +664,14 @@ if (editCoverForm) {
         try {
             const formData = new FormData();
             formData.append('capa', file);
-            const resp = await fetch(`http://localhost:8082/albuns/${currentAlbum.id}/capa`, {
+            const resp = await fetch(`${API_BASE}/albuns/${currentAlbum.id}/capa`, {
                 method: 'PUT',
                 body: formData
             });
             if (!resp.ok) throw new Error('Erro ao enviar nova capa');
 
             // Atualizar URL localmente (assume rota está servindo em /albuns/{id}/capa)
-            const newCoverUrl = `http://localhost:8082/albuns/${currentAlbum.id}/capa`;
+            const newCoverUrl = `${API_BASE}/albuns/${currentAlbum.id}/capa`;  
             const albumLocal = musicData.albums.find(a => a.id === currentAlbum.id);
             if (albumLocal) albumLocal.cover = newCoverUrl;
             if (currentAlbum) currentAlbum.cover = newCoverUrl;
@@ -694,7 +691,7 @@ if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', async () => {
         if (!currentAlbum) return alert('Nenhum álbum selecionado.');
         try {
-            const resp = await fetch(`http://localhost:8082/albuns/${currentAlbum.id}`, { method: 'DELETE' });
+            const resp = await fetch(`${API_BASE}/albuns/${currentAlbum.id}`, { method: 'DELETE' });
             if (!resp.ok) throw new Error('Erro ao excluir álbum');
 
             // Remover localmente e atualizar UI
@@ -719,7 +716,7 @@ if (confirmDeleteTrackBtn) {
     confirmDeleteTrackBtn.addEventListener('click', async () => {
         if (!trackToDelete || !trackToDelete.songId) return alert('Nenhuma música selecionada para exclusão.');
         try {
-            const resp = await fetch(`http://localhost:8082/musicas/${trackToDelete.songId}`, { method: 'DELETE' });
+            const resp = await fetch(`${API_BASE}/musicas/${trackToDelete.songId}`, { method: 'DELETE' });
             if (!resp.ok) throw new Error('Erro ao excluir música');
 
             // Remover localmente
@@ -764,7 +761,7 @@ forms.artist.addEventListener('submit', async (e) => {
 
     try {
         // 1. Cadastrar artista (POST JSON)
-        const response = await fetch('http://localhost:8082/artistas', {
+        const response = await fetch(`${API_BASE}/artistas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nome })
@@ -776,7 +773,7 @@ forms.artist.addEventListener('submit', async (e) => {
         if (imageFile) {
             const formData = new FormData();
             formData.append('arquivo', imageFile);
-            await fetch(`http://localhost:8082/artistas/${artista.id}/foto`, {
+            await fetch(`${API_BASE}/artistas/${artista.id}/foto`, {
                 method: 'POST',
                 body: formData
             });
@@ -808,7 +805,7 @@ forms.album.addEventListener('submit', async (e) => {
 
     try {
         // 1. Cadastrar álbum (POST JSON)
-        const response = await fetch('http://localhost:8082/albuns', {
+        const response = await fetch(`${API_BASE}/albuns`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -825,12 +822,12 @@ forms.album.addEventListener('submit', async (e) => {
         if (coverFile) {
             const formData = new FormData();
             formData.append('capa', coverFile);
-            const capaResp = await fetch(`http://localhost:8082/albuns/${album.id}/capa`, {
+            const capaResp = await fetch(`${API_BASE}/albuns/${album.id}/capa`, {
                 method: 'PUT',
                 body: formData
             });
             if (capaResp.ok) {
-                urlCapa = `http://localhost:8082/albuns/${album.id}/capa`;
+                urlCapa = `${API_BASE}/albuns/${album.id}/capa`;  
             }
         }
 
@@ -881,7 +878,7 @@ forms.upload.addEventListener('submit', async (e) => {
         formData.append('arquivo', musicFile);
 
         // POST para /musicas
-        const response = await fetch('http://localhost:8082/musicas', {
+        const response = await fetch(`${API_BASE}/musicas`, {
             method: 'POST',
             body: formData
         });
@@ -921,14 +918,14 @@ function updateArtistSelects() {
 // Buscar artistas do backend e popular `musicData.artists`
 async function fetchArtists() {
     try {
-        const resp = await fetch('http://localhost:8082/artistas');
+        const resp = await fetch(`${API_BASE}/artistas`);
         if (!resp.ok) throw new Error('Erro ao buscar artistas');
         const data = await resp.json();
         if (Array.isArray(data)) {
             musicData.artists = data.map(a => ({
                 id: a.id,
                 name: a.nome || a.name || 'Artista',
-                image: `http://localhost:8082/artistas/${a.id}/foto`
+                image: `${API_BASE}/artistas/${a.id}/foto`
             }));
             updateArtistSelects();
         }
@@ -964,17 +961,17 @@ async function fetchAlbums(page = 0, size = 20) {
     if (isLoadingAlbums || !hasMoreAlbums) return;
     isLoadingAlbums = true;
     try {
-        const resp = await fetch(`http://localhost:8082/albuns?pagina=${page}&tamanho=${size}`);
+        const resp = await fetch(`${API_BASE}/albuns?pagina=${page}&tamanho=${size}`);
         if (!resp.ok) throw new Error('Erro ao buscar álbuns');
         const data = await resp.json();
         if (Array.isArray(data.content)) {
             // Ajusta as URLs das imagens antes de adicionar ao musicData
             const albumsWithUrls = data.content.map(album => ({
                 ...album,
-                cover: `http://localhost:8082/albuns/${album.id}/capa`,
+                cover: `${API_BASE}/albuns/${album.id}/capa`,
                 artista: {
                     ...album.artista,
-                    foto: `http://localhost:8082/artistas/${album.artista.id}/foto`
+                    foto: `${API_BASE}/artistas/${album.artista.id}/foto`
                 }
             }));
             musicData.albums = musicData.albums.concat(albumsWithUrls);
