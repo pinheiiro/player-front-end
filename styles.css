@@ -8,13 +8,31 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     background-color: #121212;
     color: #ffffff;
+    overflow-y: auto;       /* permite scroll vertical */
+    overflow-x: hidden;     /* impede horizontal */
+    -webkit-overflow-scrolling: touch; /* scroll suave no iOS/Android */
+    height: 100dvh;
+}
+
+html, body {
+    height: 100%;
+    min-height: 100dvh; /* dvh = dynamic viewport height, ignora barras que somem */
+    overflow-x: hidden;
+}
+
+.container {
+    min-height: 100dvh; /* usa dvh para mobile moderno */
+    height: auto; /* permite crescer se necessário */
+    overflow: hidden; /* mantém hidden no desktop, mas veja abaixo */
 }
 
 .container {
     display: grid;
     grid-template-columns: 240px 1fr;
-    grid-template-rows: 1fr 90px;
-    height: 100vh;
+    grid-template-rows: 1fr auto; /* mude para auto no row da player-bar (mas como é fixed no mobile, ok) */
+    min-height: 100dvh;
+    height: 100%;             /* fallback */
+    overflow: visible;
 }
 
 /* Sidebar */
@@ -22,6 +40,23 @@ body {
     background-color: #000000;
     padding: 24px 16px;
     grid-row: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #4f4f4f #282828;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: #282828;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #4f4f4f;
+    border-radius: 3px;
 }
 
 .logo h1 {
@@ -58,9 +93,31 @@ body {
     background: linear-gradient(to bottom, #404040, #121212);
     padding: 24px;
     overflow-y: auto;
+    overflow-x: hidden;
     grid-row: 1;
     display: flex;
     flex-direction: column;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: #4f4f4f #282828;
+    padding-bottom: 120px;
+}
+
+.main-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+    background: #282828;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+    background: #4f4f4f;
+    border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+    background: #5f5f5f;
 }
 
 .top-bar {
@@ -108,6 +165,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
+    border-top: 1px solid #282828;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Oculta a barra do player quando não houver faixa carregada */
@@ -120,6 +180,7 @@ body {
     align-items: center;
     gap: 12px;
     width: 30%;
+    min-width: 180px;
 }
 
 .current-album-cover {
@@ -150,6 +211,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 8px;
+    min-width: 250px;
 }
 
 .control-buttons {
@@ -169,6 +231,12 @@ body {
 
 .control-btn:hover {
     color: #ffffff;
+}
+
+/* Ocultar botão de shuffle (primeiro) e repeat (último) */
+.control-buttons .control-btn:first-child,
+.control-buttons .control-btn:last-child {
+    display: none;
 }
 
 .play-btn {
@@ -223,6 +291,7 @@ body {
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
+    min-width: 120px;
 }
 
 .volume-slider {
@@ -474,6 +543,7 @@ body {
     background: linear-gradient(135deg, rgba(29, 185, 84, 0.2) 0%, rgba(0, 0, 0, 0.5) 100%);
     padding: 24px;
     border-radius: 8px;
+    flex-wrap: wrap;
 }
 
 .album-view-cover {
@@ -534,6 +604,7 @@ body {
     display: flex;
     gap: 16px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 /* Menu de opções do álbum (três pontos) */
@@ -722,10 +793,10 @@ body {
 
 /* RESPONSIVE DESIGN */
 
-/* Tablet (768px e acima) */
-@media (max-width: 1024px) {
+/* Tablet (768px a 1024px) */
+@media (max-width: 1024px) and (min-width: 769px) {
     .container {
-        grid-template-columns: 200px 1fr;
+        grid-template-columns: 180px 1fr;
     }
 
     .sidebar {
@@ -733,28 +804,144 @@ body {
     }
 
     .logo h1 {
-        font-size: 20px;
+        font-size: 18px;
         margin-bottom: 24px;
     }
 
     .nav-menu li {
         padding: 10px 0;
-        font-size: 14px;
+        font-size: 13px;
         gap: 12px;
     }
 
     .albums-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         gap: 16px;
     }
 
+    .album-view-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+        text-align: center;
+    }
+
     .album-view-cover img {
-        width: 150px;
-        height: 150px;
+        width: 140px;
+        height: 140px;
     }
 
     .album-view-info h1 {
-        font-size: 36px;
+        font-size: 28px;
+    }
+
+    /* Manter player bar horizontal em tablets */
+    .player-bar {
+        padding: 14px 16px;
+        gap: 14px;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+
+    .now-playing {
+        width: 30%;
+        min-width: 170px;
+    }
+
+    .player-controls {
+        width: 40%;
+        min-width: 220px;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .volume-control {
+        width: 30%;
+        min-width: 110px;
+        justify-content: flex-end;
+    }
+
+    .current-album-cover {
+        width: 50px;
+        height: 50px;
+    }
+
+    .track-name {
+        font-size: 13px;
+    }
+
+    .artist-name {
+        font-size: 11px;
+    }
+}
+
+/* Tablets grandes em landscape (iPad Pro, Surface Pro, Asus Zenbook Fold) */
+@media (min-width: 1025px) and (max-height: 900px) {
+    .player-bar {
+        padding: 16px;
+        gap: 16px;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .now-playing {
+        width: 30%;
+        min-width: 220px;
+    }
+
+    .player-controls {
+        width: 40%;
+        min-width: 300px;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .volume-control {
+        width: 30%;
+        min-width: 140px;
+        justify-content: flex-end;
+    }
+
+    .current-album-cover {
+        width: 56px;
+        height: 56px;
+    }
+}
+
+/* Landscape mobile (max-height: 500px) */
+@media (max-height: 500px) {
+    .player-bar {
+        padding: 8px;
+        min-height: 70px;
+    }
+
+    .now-playing {
+        margin-bottom: 0;
+    }
+
+    .current-album-cover {
+        width: 40px;
+        height: 40px;
+    }
+
+    .track-name {
+        font-size: 12px;
+    }
+
+    .artist-name {
+        font-size: 10px;
+    }
+
+    .control-buttons {
+        gap: 6px;
+    }
+
+    .play-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
     }
 }
 
@@ -762,7 +949,8 @@ body {
 @media (max-width: 768px) {
     .container {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr 90px;
+        grid-template-rows: auto 1fr auto;
+        overflow: hidden;
     }
 
     /* Sidebar responsivo */
@@ -775,6 +963,7 @@ body {
         gap: 16px;
         background-color: #000000;
         border-bottom: 1px solid #282828;
+        overflow: visible;
     }
 
     .logo h1 {
@@ -804,6 +993,7 @@ body {
         grid-row: 2;
         grid-column: 1;
         padding: 16px;
+        overflow-x: hidden;
     }
 
     .top-bar {
@@ -911,6 +1101,36 @@ body {
         font-size: 12px;
     }
 
+    .player-bar {
+        position: fixed !important;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000; /* fica acima de tudo */
+        padding-bottom: env(safe-area-inset-bottom); /* evita sobreposição da barra inferior Android */
+        box-sizing: border-box;
+        height: auto;
+        min-height: 90px;
+    }
+
+    /* Aumenta padding no main-content para não ser coberto pela player bar */
+    .main-content {
+        padding-bottom: 120px; /* ajuste conforme a altura da sua player bar + safe area */
+        box-sizing: border-box;
+    }
+
+    /* Sidebar top vira header fixed se quiser */
+    .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+    }
+
+    /* Evita scroll horizontal indesejado */
+    body {
+        overflow-x: hidden;
+    }
+
     /* Player bar */
     .player-bar {
         grid-column: 1;
@@ -919,12 +1139,15 @@ body {
         padding: 12px;
         gap: 8px;
         height: auto;
+        min-height: 90px;
+        border-top: 1px solid #282828;
     }
 
     .now-playing {
         width: 100%;
         gap: 10px;
         margin-bottom: 8px;
+        min-width: unset;
     }
 
     .current-album-cover {
@@ -947,6 +1170,7 @@ body {
     .player-controls {
         width: 100%;
         gap: 6px;
+        min-width: unset;
     }
 
     .control-buttons {
@@ -979,6 +1203,8 @@ body {
         width: 100%;
         gap: 4px;
         font-size: 12px;
+        min-width: unset;
+        justify-content: center;
     }
 
     .volume-slider {
@@ -1000,6 +1226,21 @@ body {
     .submit-btn {
         padding: 12px 24px;
         font-size: 14px;
+    }
+    
+    .main-content {
+        padding-bottom: calc(110px + env(safe-area-inset-bottom, 20px)); /* 110px para bar + safe-area fallback */
+        /* Se env() não funcionar em browsers antigos, use valor fixo maior: padding-bottom: 150px !important; */
+    }
+
+    /* Específico para album view (lista de músicas) - aumenta espaço se necessário */
+    .album-view {
+        padding-bottom: 150px; /* ou calc(120px + env(safe-area-inset-bottom, 30px)); */
+    }
+
+    /* Garante que a player bar não sobreponha modais ou outros */
+    .player-bar {
+        padding-bottom: env(safe-area-inset-bottom, 0);
     }
 }
 
@@ -1025,6 +1266,7 @@ body {
 
     .main-content {
         padding: 12px;
+        gap: 8px;
     }
 
     .albums-grid {
@@ -1055,5 +1297,37 @@ body {
     .play-all-btn {
         padding: 10px 20px;
         font-size: 14px;
+    }
+
+    .player-bar {
+        padding: 10px;
+        gap: 6px;
+    }
+
+    .now-playing {
+        gap: 8px;
+    }
+
+    .current-album-cover {
+        width: 40px;
+        height: 40px;
+    }
+
+    .track-name {
+        font-size: 12px;
+    }
+
+    .artist-name {
+        font-size: 10px;
+    }
+
+    .control-buttons {
+        gap: 6px;
+    }
+
+    .play-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
     }
 }
