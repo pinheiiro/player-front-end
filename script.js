@@ -199,11 +199,27 @@ function loadAndPlayTrack() {
 function showPlayerBar() {
     const bar = document.querySelector('.player-bar');
     if (bar) bar.classList.remove('hidden');
+    updateMobilePlayerOffset();
 }
 
 function hidePlayerBar() {
     const bar = document.querySelector('.player-bar');
     if (bar) bar.classList.add('hidden');
+    updateMobilePlayerOffset();
+}
+
+function updateMobilePlayerOffset() {
+    const mobileBreakpoint = 768;
+    const root = document.documentElement;
+    const bar = document.querySelector('.player-bar');
+
+    if (window.innerWidth > mobileBreakpoint || !bar || bar.classList.contains('hidden')) {
+        root.style.setProperty('--mobile-player-offset', '0px');
+        return;
+    }
+
+    const barHeight = Math.ceil(bar.getBoundingClientRect().height);
+    root.style.setProperty('--mobile-player-offset', `${barHeight}px`);
 }
 
 // Função para abrir a vista do álbum (Spotify-like)
@@ -995,6 +1011,10 @@ albumsGrid.addEventListener('scroll', () => {
         fetchAlbums(currentPage);
     }
 });
+
+window.addEventListener('resize', updateMobilePlayerOffset);
+window.addEventListener('orientationchange', updateMobilePlayerOffset);
+window.addEventListener('load', updateMobilePlayerOffset);
 
 // Inicialização
 fetchAlbums();
