@@ -1331,3 +1331,11 @@ html, body {
         font-size: 12px;
     }
 }
+
+/* Mobile: add bottom space for album grid when player bar is visible */
+@media (max-width: 768px) {
+    .albums-grid {
+        padding-bottom: calc(160px + env(safe-area-inset-bottom, 24px));
+        box-sizing: border-box;
+    }
+}
